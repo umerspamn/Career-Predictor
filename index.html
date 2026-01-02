@@ -484,6 +484,9 @@
 
         // --- RENDER FUNCTIONS ---
 
+        // Track last rendered step to prevent re-animation
+        let lastRenderedStep = null;
+
         function renderHeader() {
             return `
                 <div class="flex justify-between items-center p-4 bg-white border-b border-slate-100 sticky top-0 z-50">
@@ -546,7 +549,7 @@
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-400 uppercase">Age</label>
-                            <input type="number" value="${STATE.profile.age}" oninput="setProfile('age', this.value)" class="w-full p-3 border border-slate-200 rounded-lg mt-1 outline-none focus:border-emerald-500" placeholder="e.g. 18" />
+                            <input id="input-age" type="number" value="${STATE.profile.age}" oninput="setProfile('age', this.value)" class="w-full p-3 border border-slate-200 rounded-lg mt-1 outline-none focus:border-emerald-500" placeholder="e.g. 18" />
                         </div>
                     </div>
 
@@ -794,21 +797,44 @@
         // --- MAIN RENDER LOOP ---
         function render() {
             const app = document.getElementById('app');
-            app.innerHTML = renderHeader();
-            
-            if (STATE.step === 0) app.innerHTML += renderStep0();
-            else if (STATE.step === 1) app.innerHTML += renderStep1();
-            else if (STATE.step === 2) app.innerHTML += renderStep2();
-            else if (STATE.step === 3) app.innerHTML += renderStep3();
-            else if (STATE.step === 4) app.innerHTML += renderStep4();
-            else if (STATE.step === 5) app.innerHTML += renderStep5();
+            let contentHtml = "";
+
+            if (STATE.step === 0) contentHtml = renderStep0();
+            else if (STATE.step === 1) contentHtml = renderStep1();
+            else if (STATE.step === 2) contentHtml = renderStep2();
+            else if (STATE.step === 3) contentHtml = renderStep3();
+            else if (STATE.step === 4) contentHtml = renderStep4();
+            else if (STATE.step === 5) contentHtml = renderStep5();
+
+            // Prevent re-animation if step hasn't changed
+            if (STATE.step === lastRenderedStep) {
+                contentHtml = contentHtml.replace(/fade-in/g, '');
+            }
+            lastRenderedStep = STATE.step;
+
+            // Attempt to preserve focus (rudimentary)
+            const focusedId = document.activeElement ? document.activeElement.id : null;
+            const focusedValue = focusedId ? document.getElementById(focusedId)?.value : null;
+            const selectionStart = focusedId ? document.getElementById(focusedId)?.selectionStart : null;
+            const selectionEnd = focusedId ? document.getElementById(focusedId)?.selectionEnd : null;
+
+            app.innerHTML = renderHeader() + contentHtml;
 
             lucide.createIcons();
             
-            // Re-focus chat input if it exists and was focused
+            // Restore focus
             const chatInput = document.getElementById('chatInput');
             if (chatInput && STATE.resultTab === 'mentor' && !STATE.chatLoading) {
                chatInput.focus();
+            } else if (focusedId) {
+                const el = document.getElementById(focusedId);
+                if (el) {
+                    el.focus();
+                    if (focusedValue !== null && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                        // el.value = focusedValue; // Value should be set by render logic from STATE, but cursor position needs restore
+                        if (selectionStart !== null) el.setSelectionRange(selectionStart, selectionEnd);
+                    }
+                }
             }
 
             // Expose logic to window for onclick handlers
