@@ -306,8 +306,9 @@
 
                 let constraintVal = 100;
                 if (!career.stream.includes('any') && !career.stream.includes(profile.stream)) {
-                    if (profile.stream === 'pre-medical' && career.id.includes('eng')) { constraintVal = 0; elimination = "Requires Pre-Engineering background."; }
-                    else if (profile.stream === 'arts' && career.id.includes('med')) { constraintVal = 0; elimination = "Requires Pre-Medical background."; }
+                    if (profile.stream === 'pre-medical' && (career.id.includes('eng') || career.stream.includes('pre-engineering'))) { constraintVal = 0; elimination = "Requires Pre-Engineering background."; }
+                    else if (profile.stream === 'pre-engineering' && (career.id.includes('med') || career.stream.includes('pre-medical'))) { constraintVal = 0; elimination = "Requires Pre-Medical background."; }
+                    else if (profile.stream === 'arts' && (career.id.includes('med') || career.id.includes('eng') || career.stream.includes('pre-medical') || career.stream.includes('pre-engineering'))) { constraintVal = 0; elimination = "Requires Science background."; }
                     else { constraintVal = 40; reasons.push("Requires stream conversion/extra study."); }
                 }
                 if (profile.financialPressure === 'yes') {
@@ -321,6 +322,24 @@
             }).sort((a, b) => b.finalScore - a.finalScore);
 
             return { careers: scoredCareers, userTraits, confidenceScore, confidenceReason };
+        }
+
+        function parseGeminiResponse(responseText) {
+            try {
+                return JSON.parse(responseText);
+            } catch (e) {
+                const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (jsonMatch && jsonMatch[1]) {
+                    try {
+                        return JSON.parse(jsonMatch[1]);
+                    } catch (e2) {
+                        console.error("Failed to parse extracted JSON:", e2);
+                    }
+                }
+                console.error("Failed to parse Gemini response:", e);
+                // Return null to handle gracefully
+                return null;
+            }
         }
 
         // --- GEMINI API FUNCTIONS ---
@@ -351,8 +370,13 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                const content = JSON.parse(data.candidates[0].content.parts[0].text);
-                STATE.geminiResponse = content;
+                const text = data.candidates[0].content.parts[0].text;
+                const content = parseGeminiResponse(text);
+                if (content) {
+                    STATE.geminiResponse = content;
+                } else {
+                    throw new Error("Invalid response format");
+                }
             } catch (e) {
                 console.error(e);
                 STATE.geminiResponse = { why_fit: ["Trait alignment"], harsh_reality: "Analysis error.", starter_plan: ["Research manually"] };
@@ -374,7 +398,9 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.dayInLife = JSON.parse(data.candidates[0].content.parts[0].text);
+                const text = data.candidates[0].content.parts[0].text;
+                const content = parseGeminiResponse(text);
+                if (content) STATE.dayInLife = content;
             } catch (e) { console.error(e); }
             finally { STATE.dayInLifeLoading = false; render(); }
         }
@@ -391,7 +417,9 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.roadmap = JSON.parse(data.candidates[0].content.parts[0].text);
+                const text = data.candidates[0].content.parts[0].text;
+                const content = parseGeminiResponse(text);
+                if (content) STATE.roadmap = content;
             } catch (e) { console.error(e); }
             finally { STATE.roadmapLoading = false; render(); }
         }
@@ -408,7 +436,9 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.emailDraft = JSON.parse(data.candidates[0].content.parts[0].text);
+                const text = data.candidates[0].content.parts[0].text;
+                const content = parseGeminiResponse(text);
+                if (content) STATE.emailDraft = content;
             } catch (e) { console.error(e); }
             finally { STATE.emailLoading = false; render(); }
         }
