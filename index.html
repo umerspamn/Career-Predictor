@@ -325,6 +325,17 @@
 
         // --- GEMINI API FUNCTIONS ---
 
+        function parseGeminiJSON(text) {
+            try {
+                // Remove Markdown code blocks if present
+                const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+                return JSON.parse(cleanText);
+            } catch (e) {
+                console.error("JSON Parse Error", e);
+                return null;
+            }
+        }
+
         async function callGeminiAnalysis(res) {
             STATE.loadingGemini = true;
             render();
@@ -351,11 +362,12 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                const content = JSON.parse(data.candidates[0].content.parts[0].text);
-                STATE.geminiResponse = content;
+                const content = parseGeminiJSON(data.candidates[0].content.parts[0].text);
+                if (content) STATE.geminiResponse = content;
+                else throw new Error("Parse failed");
             } catch (e) {
                 console.error(e);
-                STATE.geminiResponse = { why_fit: ["Trait alignment"], harsh_reality: "Analysis error.", starter_plan: ["Research manually"] };
+                STATE.geminiResponse = { why_fit: ["Trait alignment"], harsh_reality: "Analysis error. Please try again.", starter_plan: ["Research manually"] };
             } finally {
                 STATE.loadingGemini = false;
                 render();
@@ -374,7 +386,7 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.dayInLife = JSON.parse(data.candidates[0].content.parts[0].text);
+                STATE.dayInLife = parseGeminiJSON(data.candidates[0].content.parts[0].text);
             } catch (e) { console.error(e); }
             finally { STATE.dayInLifeLoading = false; render(); }
         }
@@ -391,7 +403,7 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.roadmap = JSON.parse(data.candidates[0].content.parts[0].text);
+                STATE.roadmap = parseGeminiJSON(data.candidates[0].content.parts[0].text);
             } catch (e) { console.error(e); }
             finally { STATE.roadmapLoading = false; render(); }
         }
@@ -408,7 +420,7 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
                 });
                 const data = await response.json();
-                STATE.emailDraft = JSON.parse(data.candidates[0].content.parts[0].text);
+                STATE.emailDraft = parseGeminiJSON(data.candidates[0].content.parts[0].text);
             } catch (e) { console.error(e); }
             finally { STATE.emailLoading = false; render(); }
         }
