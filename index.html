@@ -36,31 +36,42 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        // Configuration
-        const firebaseConfig = JSON.parse(localStorage.getItem('__firebase_config') || '{}'); 
+        // Configuration - checking global variable first, then localStorage
+        let firebaseConfig = {};
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } else {
+                firebaseConfig = JSON.parse(localStorage.getItem('__firebase_config') || '{}');
+            }
+        } catch (e) { console.error("Config parse error", e); }
         
         // Initialize (Safe check for empty config in preview)
         if (Object.keys(firebaseConfig).length > 0) {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-            
-            // Expose to global scope for the main logic to use
-            window.firebaseAuth = auth;
-            window.firebaseDb = db;
-            window.firebaseFuncs = { signInAnonymously, collection, addDoc, serverTimestamp };
-            
-            // Auto sign-in
-            signInAnonymously(auth).then(userCred => {
-                console.log("Auth:", userCred.user.uid);
-            }).catch(e => console.error("Auth Error", e));
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                
+                // Expose to global scope for the main logic to use
+                window.firebaseAuth = auth;
+                window.firebaseDb = db;
+                window.firebaseFuncs = { signInAnonymously, collection, addDoc, serverTimestamp };
+                
+                // Auto sign-in
+                signInAnonymously(auth).then(userCred => {
+                    console.log("Auth:", userCred.user.uid);
+                }).catch(e => console.error("Auth Error", e));
+            } catch (e) {
+                console.warn("Firebase Init Error (likely missing config):", e);
+            }
         }
     </script>
 
     <!-- Main Application Logic -->
     <script>
         // --- CONFIGURATION ---
-        const API_KEY = "AIzaSyC4o-XlDEbs4MO4Q0sEN-pZJTY_q1eJLN0";
+        const API_KEY = "AIzaSyDipeAeXuyabxBPawovdRS_TtyG-BjREws";
 
         // --- DATA CONSTANTS ---
         const TRAITS = ['analytical', 'creativity', 'socialInfluence', 'conscientiousness', 'riskTolerance', 'stressTolerance', 'leadership', 'patience'];
@@ -795,3 +806,4 @@
     </script>
 </body>
 </html>
+
